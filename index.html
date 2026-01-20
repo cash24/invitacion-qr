@@ -2,27 +2,30 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Invitación</title>
-<meta name="description" content="Invitación con QR por parámetros de URL (id, nombre, mesa, invitados)">
-<style>
-  :root{ --bg:#0b132b; --card:#1c2541; --txt:#ffffff; --acc:#5bc0be; }
-  html,body{margin:0;padding:0;background:#0b132b;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:var(--txt)}
-  .wrap{max-width:780px;margin:0 auto;padding:24px}
-  .card{background:var(--card);border-radius:16px;padding:20px 20px 24px;box-shadow:0 10px 30px rgba(0,0,0,.2)}
-  h1{font-size:clamp(20px,4.5vw,28px);margin:.2em 0 .4em;line-height:1.2}
-  .meta{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:12px 0 18px}
-  .item{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:12px}
-  .label{font-size:12px;opacity:.85;letter-spacing:.3px;text-transform:uppercase}
-  .value{font-weight:700;font-size:18px;margin-top:2px;word-break:break-word}
-  .qr{display:flex;justify-content:center;align-items:center;padding:18px}
-  .err{background:#3b0d0d;color:#ffe6e6;border:1px solid #ff7a7a;border-radius:10px;padding:12px;margin-top:12px}
-  .ok{background:rgba(91,192,190,.12);border:1px solid rgba(91,192,190,.45);border-radius:10px;padding:10px;margin:10px 0 0}
-  .small{font-size:12px;opacity:.9}
-  @media (max-width:640px){ .meta{grid-template-columns:1fr 1fr} }
-  @media (max-width:420px){ .meta{grid-template-columns:1fr} }
-</style>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Invitación</title>
+  <meta name="description" content="Invitación con QR por parámetros de URL (id, nombre, mesa, invitados)">
+  <!-- Evita 404 del favicon en GitHub Pages -->
+  data:,
+
+  <style>
+    :root{ --bg:#0b132b; --card:#1c2541; --txt:#ffffff; --acc:#5bc0be; }
+    html,body{margin:0;padding:0;background:#0b132b;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:var(--txt)}
+    .wrap{max-width:780px;margin:0 auto;padding:24px}
+    .card{background:var(--card);border-radius:16px;padding:20px 20px 24px;box-shadow:0 10px 30px rgba(0,0,0,.2)}
+    h1{font-size:clamp(20px,4.5vw,28px);margin:.2em 0 .4em;line-height:1.2}
+    .meta{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:12px 0 18px}
+    .item{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:12px}
+    .label{font-size:12px;opacity:.85;letter-spacing:.3px;text-transform:uppercase}
+    .value{font-weight:700;font-size:18px;margin-top:2px;word-break:break-word}
+    .qr{display:flex;justify-content:center;align-items:center;padding:18px}
+    .err{background:#3b0d0d;color:#ffe6e6;border:1px solid #ff7a7a;border-radius:10px;padding:12px;margin-top:12px}
+    .ok{background:rgba(91,192,190,.12);border:1px solid rgba(91,192,190,.45);border-radius:10px;padding:10px;margin:10px 0 0}
+    .small{font-size:12px;opacity:.9}
+    @media (max-width:640px){ .meta{grid-template-columns:1fr 1fr} }
+    @media (max-width:420px){ .meta{grid-template-columns:1fr} }
+  </style>
 </head>
 <body>
 <div class="wrap">
@@ -68,33 +71,90 @@
 </div>
 
 <!-- Librería QR (carga desde CDN) -->
-<script src="https://cdn.jsdelivr.net/gh/davidshimjs/qrcodejs/qrcode.min.jscript>
+https://cdn.jsdelivr.net/gh/davidshimjs/qrcodejs/qrcode.min.js</script>
+
+<script>
 (function(){
-  function parseParams(search) {
-    const p = new URLSearchParams(search || '');
+  // ========== LOG INICIAL ==========
+  console.groupCollapsed('%cInvitación QR - Diagnóstico', 'background:#1c2541;color:#5bc0be;padding:2px 6px;border-radius:4px;');
+  console.info('👉 Versión:', '2026-01-20 1.0.0');
+  console.info('location.href:', window.location.href);
+  console.info('location.search (crudo):', window.location.search);
+  console.info('document.referrer:', document.referrer);
+
+  // ========== HELPERS ==========
+  function normalizeQuery(search) {
+    // Corrige casos donde los & vienen codificados como &amp;
+    // También tolera un '?' inicial ausente (por robustez)
+    let s = search || '';
+    if (s && s[0] !== '?' && s.includes('=')) s = '?' + s;
+    const fixed = s.replace(/&amp;/g, '&');
+    if (fixed !== s) {
+      console.warn('⚠️ Normalizado &amp; → & en query:', { original: s, fixed });
+    }
+    return fixed;
+  }
+
+  function parseParamsFrom(search) {
+    const normalized = normalizeQuery(search);
+    const p = new URLSearchParams(normalized);
     const clean = v => (v || '').replace(/^"(.*)"$/,'$1').trim(); // quita comillas "..."
-    return {
+    const data = {
       id: clean(p.get('id')),
       nombre: clean(p.get('nombre')),
       mesa: clean(p.get('mesa')),
       invitados: clean(p.get('invitados'))
     };
+    console.table({ 'params parsed': data });
+    return data;
   }
 
-  // Lee parámetros de la propia URL (GitHub Pages sí los pasa)
-  const data = parseParams(window.location.search);
+  function buildUrlFrom(base, data) {
+    const qs = new URLSearchParams();
+    if (data.id) qs.set('id', data.id);
+    if (data.nombre) qs.set('nombre', data.nombre);
+    if (data.mesa) qs.set('mesa', data.mesa);
+    if (data.invitados) qs.set('invitados', data.invitados);
+    return qs.toString() ? `${base}?${qs.toString()}` : base;
+  }
 
-  // Pinta datos
+  // ========== PARSEO PRINCIPAL ==========
+  let data = parseParamsFrom(window.location.search);
+
+  // Si todo viene vacío, intentamos desde el referrer (por si llegaste desde un HTML que te pasó &amp;)
+  if (!(data.id || data.nombre || data.mesa || data.invitados)) {
+    try {
+      if (document.referrer) {
+        console.info('🔎 Intentando parsear parámetros desde document.referrer...');
+        const ref = new URL(document.referrer);
+        const alt = parseParamsFrom(ref.search);
+        if (alt.id || alt.nombre || alt.mesa || alt.invitados) {
+          console.info('✅ Parámetros obtenidos desde referrer.');
+          data = alt;
+        } else {
+          console.info('⛔ Referrer no aporta parámetros útiles.');
+        }
+      } else {
+        console.info('⛔ No hay referrer disponible.');
+      }
+    } catch (e) {
+      console.error('❌ Error al procesar referrer:', e);
+    }
+  }
+
+  // ========== PINTAR UI ==========
   document.getElementById('id').textContent = data.id || '—';
   document.getElementById('nombre').textContent = data.nombre || '—';
   document.getElementById('mesa').textContent = data.mesa || '—';
   document.getElementById('invitados').textContent = data.invitados || '—';
 
-  // Construye el link exacto
-  const url = window.location.origin + window.location.pathname + window.location.search;
-  document.getElementById('link').textContent = url;
+  // Enlace canónico que mostramos (preferimos la URL actual pero con query normalizada)
+  const base = window.location.origin + window.location.pathname;
+  const finalUrl = buildUrlFrom(base, data);
+  document.getElementById('link').textContent = finalUrl;
+  console.info('🔗 finalUrl mostrado:', finalUrl);
 
-  // Validación de obligatorios
+  // ========== VALIDACIÓN ==========
   const missing = [];
   if(!data.id) missing.push('id');
   if(!data.nombre) missing.push('nombre');
@@ -106,23 +166,41 @@
     err.style.display = 'block';
     err.innerHTML =
       'Faltan parámetros obligatorios: <b>' + missing.join(', ') + '</b>.<br>' +
-      'Ejemplo de uso: ?id=1&nombre=MIKE&mesa=10&invitados=10';
+      'Ejemplo: ?id=1&nombre=MIKE&mesa=10&invitados=10';
+    console.error('⛔ Faltan parámetros:', missing);
+    console.groupEnd();
     return;
   }
 
-  // Genera QR con la URL completa
-  new QRCode(document.getElementById('qrcode'), {
-    text: url,
-    width: 220,
-    height: 220,
-    colorDark : "#000000",
-    colorLight : "#ffffff",
-    correctLevel : QRCode.CorrectLevel.M
-  });
+  // ========== QR CODE ==========
+  try {
+    if (typeof QRCode === 'undefined') {
+      throw new Error('QRCode no está disponible. Revisa la carga del script del CDN.');
+    }
+    new QRCode(document.getElementById('qrcode'), {
+      text: finalUrl,
+      width: 220,
+      height: 220,
+      colorDark : "#000000",
+      colorLight : "#ffffff",
+      correctLevel : QRCode.CorrectLevel.M
+    });
+    console.info('✅ QR generado correctamente.');
+  } catch(e) {
+    const err = document.getElementById('error');
+    err.style.display = 'block';
+    err.textContent = 'No se pudo generar el QR. Revisa que la librería se haya cargado (con el src correcto).';
+    console.error('❌ Error generando QR:', e);
+    console.groupEnd();
+    return;
+  }
 
+  // ========== MENSAJE OK ==========
   const ok = document.getElementById('status');
   ok.style.display = 'block';
   ok.textContent = 'Invitación generada correctamente.';
+
+  console.groupEnd();
 })();
 </script>
 </body>
