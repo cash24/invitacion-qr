@@ -70,156 +70,123 @@
   </div>
 </div>
 
+<!-- Librería QR local (sin dependencias externas) -->
+./lib/qrcode.min.js</script>
+
 <script>
-/**
- * Cargador con fallbacks para qrcodejs.
- * Intenta 3 CDNs en orden. Llama a onReady() cuando window.QRCode esté disponible.
- */
-(function loadQRCodeLib(){
-  const cdns = [
-    // jsDelivr (npm)
-    'https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js',
-    // unpkg (npm)
-    'https://unpkg.com/qrcodejs@1.0.0/qrcode.min.js',
-    // cdnjs (Cloudflare) - nombre distinto del archivo
-    'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js'
-  ];
+(function(){
+  // ========== LOG INICIAL ==========
+  console.groupCollapsed('%cInvitación QR - Diagnóstico', 'background:#1c2541;color:#5bc0be;padding:2px 6px;border-radius:4px;');
+  console.info('👉 Versión:', '2026-01-20 1.2.0 (local lib)');
+  console.info('location.href:', window.location.href);
+  console.info('location.search (crudo):', window.location.search);
+  console.info('document.referrer:', document.referrer);
+  console.info('QRCode disponible:', typeof QRCode);
 
-  let idx = 0;
-  function tryNext(){
-    if (window.QRCode) {
-      console.info('✅ qrcodejs ya presente en la página.');
-      onReady();
-      return;
-    }
-    if (idx >= cdns.length) {
-      const err = document.getElementById('error');
-      err.style.display = 'block';
-      err.textContent = 'No se pudo cargar la librería de QR desde los CDNs. Intenta recargar o avísame.';
-      console.error('⛔ No fue posible cargar qrcodejs desde ninguno de los CDNs.');
-      return;
-    }
-    const src = cdns[idx++];
-    const s = document.createElement('script');
-    s.src = src;
-    s.async = true;
-    s.onload = function(){
-      if (window.QRCode) {
-        console.info('✅ qrcodejs cargado desde:', src);
-        onReady();
-      } else {
-        console.warn('⚠️ Script cargado pero window.QRCode no está definido. Probando siguiente CDN…', src);
-        tryNext();
-      }
-    };
-    s.onerror = function(){
-      console.warn('⚠️ Falló la carga del CDN:', src);
-      tryNext();
-    };
-    document.head.appendChild(s);
-  }
-  tryNext();
-
-  // ----- LÓGICA PRINCIPAL: solo corre cuando la librería está lista -----
-  function onReady(){
-    console.groupCollapsed('%cInvitación QR - Diagnóstico', 'background:#1c2541;color:#5bc0be;padding:2px 6px;border-radius:4px;');
-    console.info('👉 Versión:', '2026-01-20 1.1.0');
-    console.info('location.href:', window.location.href);
-    console.info('location.search (crudo):', window.location.search);
-    console.info('document.referrer:', document.referrer);
-
-    function normalizeQuery(search) {
-      let s = search || '';
-      if (s && s[0] !== '?' && s.includes('=')) s = '?' + s;
-      const fixed = s.replace(/&amp;/g, '&');
-      if (fixed !== s) {
-        console.warn('⚠️ Normalizado &amp; → & en query:', { original: s, fixed });
-      }
-      return fixed;
-    }
-
-    function parseParamsFrom(search) {
-      const normalized = normalizeQuery(search);
-      const p = new URLSearchParams(normalized);
-      const clean = v => (v || '').replace(/^"(.*)"$/,'$1').trim();
-      const data = {
-        id: clean(p.get('id')),
-        nombre: clean(p.get('nombre')),
-        mesa: clean(p.get('mesa')),
-        invitados: clean(p.get('invitados'))
-      };
-      console.table({ 'params parsed': data });
-      return data;
-    }
-
-    function buildUrlFrom(base, data) {
-      const qs = new URLSearchParams();
-      if (data.id) qs.set('id', data.id);
-      if (data.nombre) qs.set('nombre', data.nombre);
-      if (data.mesa) qs.set('mesa', data.mesa);
-      if (data.invitados) qs.set('invitados', data.invitados);
-      return qs.toString() ? `${base}?${qs.toString()}` : base;
-    }
-
-    // Parseo
-    let data = parseParamsFrom(window.location.search);
-
-    // Pintar UI
-    document.getElementById('id').textContent = data.id || '—';
-    document.getElementById('nombre').textContent = data.nombre || '—';
-    document.getElementById('mesa').textContent = data.mesa || '—';
-    document.getElementById('invitados').textContent = data.invitados || '—';
-
-    // Enlace a mostrar (siempre reconstruido con & reales)
-    const base = window.location.origin + window.location.pathname;
-    const finalUrl = buildUrlFrom(base, data);
-    document.getElementById('link').textContent = finalUrl;
-    console.info('🔗 finalUrl mostrado:', finalUrl);
-
-    // Validación
-    const missing = [];
-    if(!data.id) missing.push('id');
-    if(!data.nombre) missing.push('nombre');
-    if(!data.mesa) missing.push('mesa');
-    if(!data.invitados) missing.push('invitados');
-
-    if(missing.length){
-      const err = document.getElementById('error');
-      err.style.display = 'block';
-      err.innerHTML =
-        'Faltan parámetros obligatorios: <b>' + missing.join(', ') + '</b>.<br>' +
-        'Ejemplo: ?id=1&nombre=MIKE&mesa=10&invitados=10';
-      console.error('⛔ Faltan parámetros:', missing);
-      console.groupEnd();
-      return;
-    }
-
-    // Generar QR
-    try {
-      new QRCode(document.getElementById('qrcode'), {
-        text: finalUrl,
-        width: 220,
-        height: 220,
-        colorDark : "#000000",
-        colorLight : "#ffffff",
-        correctLevel : QRCode.CorrectLevel.M
-      });
-      console.info('✅ QR generado correctamente.');
-    } catch(e) {
-      const err = document.getElementById('error');
-      err.style.display = 'block';
-      err.textContent = 'No se pudo generar el QR. Revisa la consola.';
-      console.error('❌ Error generando QR:', e);
-      console.groupEnd();
-      return;
-    }
-
-    // OK
-    const ok = document.getElementById('status');
-    ok.style.display = 'block';
-    ok.textContent = 'Invitación generada correctamente.';
+  // Asegura que la librería esté disponible
+  if (typeof QRCode === 'undefined') {
+    const err = document.getElementById('error');
+    err.style.display = 'block';
+    err.textContent = 'No se encontró la librería local de QR (./lib/qrcode.min.js). Verifica que exista en el repo.';
+    console.error('⛔ QRCode no está definido. Revisa que ./lib/qrcode.min.js esté presente.');
     console.groupEnd();
+    return;
   }
+
+  // ========== HELPERS ==========
+  function normalizeQuery(search) {
+    // Corrige casos donde los & vienen codificados como &amp;
+    let s = search || '';
+    if (s && s[0] !== '?' && s.includes('=')) s = '?' + s;
+    const fixed = s.replace(/&amp;/g, '&');
+    if (fixed !== s) {
+      console.warn('⚠️ Normalizado &amp; → & en query:', { original: s, fixed });
+    }
+    return fixed;
+  }
+
+  function parseParamsFrom(search) {
+    const normalized = normalizeQuery(search);
+    const p = new URLSearchParams(normalized);
+    const clean = v => (v || '').replace(/^"(.*)"$/,'$1').trim(); // quita comillas "..."
+    const data = {
+      id: clean(p.get('id')),
+      nombre: clean(p.get('nombre')),
+      mesa: clean(p.get('mesa')),
+      invitados: clean(p.get('invitados'))
+    };
+    console.table({ 'params parsed': data });
+    return data;
+  }
+
+  function buildUrlFrom(base, data) {
+    const qs = new URLSearchParams();
+    if (data.id) qs.set('id', data.id);
+    if (data.nombre) qs.set('nombre', data.nombre);
+    if (data.mesa) qs.set('mesa', data.mesa);
+    if (data.invitados) qs.set('invitados', data.invitados);
+    return qs.toString() ? `${base}?${qs.toString()}` : base;
+  }
+
+  // ========== PARSEO PRINCIPAL ==========
+  const data = parseParamsFrom(window.location.search);
+
+  // ========== PINTAR UI ==========
+  document.getElementById('id').textContent = data.id || '—';
+  document.getElementById('nombre').textContent = data.nombre || '—';
+  document.getElementById('mesa').textContent = data.mesa || '—';
+  document.getElementById('invitados').textContent = data.invitados || '—';
+
+  // Enlace canónico que mostramos (siempre reconstruido con & reales)
+  const base = window.location.origin + window.location.pathname;
+  const finalUrl = buildUrlFrom(base, data);
+  document.getElementById('link').textContent = finalUrl;
+  console.info('🔗 finalUrl mostrado:', finalUrl);
+
+  // ========== VALIDACIÓN ==========
+  const missing = [];
+  if(!data.id) missing.push('id');
+  if(!data.nombre) missing.push('nombre');
+  if(!data.mesa) missing.push('mesa');
+  if(!data.invitados) missing.push('invitados');
+
+  if(missing.length){
+    const err = document.getElementById('error');
+    err.style.display = 'block';
+    err.innerHTML =
+      'Faltan parámetros obligatorios: <b>' + missing.join(', ') + '</b>.<br>' +
+      'Ejemplo: ?id=1&nombre=MIKE&mesa=10&invitados=10';
+    console.error('⛔ Faltan parámetros:', missing);
+    console.groupEnd();
+    return;
+  }
+
+  // ========== QR CODE ==========
+  try {
+    new QRCode(document.getElementById('qrcode'), {
+      text: finalUrl,
+      width: 220,
+      height: 220,
+      colorDark : "#000000",
+      colorLight : "#ffffff",
+      correctLevel : QRCode.CorrectLevel.M
+    });
+    console.info('✅ QR generado correctamente.');
+  } catch(e) {
+    const err = document.getElementById('error');
+    err.style.display = 'block';
+    err.textContent = 'No se pudo generar el QR. Revisa la consola.';
+    console.error('❌ Error generando QR:', e);
+    console.groupEnd();
+    return;
+  }
+
+  // ========== MENSAJE OK ==========
+  const ok = document.getElementById('status');
+  ok.style.display = 'block';
+  ok.textContent = 'Invitación generada correctamente.';
+
+  console.groupEnd();
 })();
 </script>
 </body>
